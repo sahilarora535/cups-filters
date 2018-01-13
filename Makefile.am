@@ -119,9 +119,7 @@ bannerfiles = \
 	banners/topsecret \
 	banners/unclassified
 
-if ENABLE_POPPLER
 pkgbanner_DATA += $(bannerfiles)
-endif
 
 EXTRA_DIST += $(bannerfiles)
 
@@ -605,6 +603,7 @@ pkgfilter_PROGRAMS += \
 	rastertopclx \
 	texttopdf \
 	rastertopdf \
+	bannertopdf \
 	rastertops
 if ENABLE_URFTOPDF
 pkgfilter_PROGRAMS += \
@@ -612,7 +611,6 @@ pkgfilter_PROGRAMS += \
 endif
 if ENABLE_POPPLER
 pkgfilter_PROGRAMS += \
-	bannertopdf \
 	pdftoraster
 if ENABLE_IJS
 pkgfilter_PROGRAMS += \
@@ -666,7 +664,7 @@ bannertopdf_CFLAGS = \
 	$(CUPS_CFLAGS) \
 	$(LIBJPEG_CFLAGS) \
 	$(LIBPNG_CFLAGS) \
-	$(POPPLER_CFLAGS) \
+	$(LIBQPDF_CFLAGS) \
 	$(TIFF_CFLAGS) \
 	$(FONTCONFIG_CFLAGS) \
 	-I$(srcdir)/fontembed/
@@ -677,7 +675,7 @@ bannertopdf_LDADD = \
 	$(CUPS_LIBS) \
 	$(LIBJPEG_LIBS) \
 	$(LIBPNG_LIBS) \
-	$(POPPLER_LIBS) \
+	$(LIBQPDF_LIBS) \
 	$(TIFF_LIBS) \
 	$(FONTCONFIG_LIBS) \
 	libfontembed.la
