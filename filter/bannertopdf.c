@@ -364,7 +364,7 @@ static int generate_banner_pdf(banner_t *banner,
     char *buf;
     size_t len;
     FILE *s;
-    // pdf_t *doc;
+    pdf_t *doc;
     float page_width, page_length;
     float media_limits[4];
     float page_scale;
@@ -374,8 +374,8 @@ static int generate_banner_pdf(banner_t *banner,
     struct stat st;
 #endif
 
-//     if (!(doc = pdf_load_template(banner->template_file)))
-//         return 1;
+    if (!(doc = pdf_load_template(banner->template_file)))
+        return 1;
 
     get_pagesize(ppd, noptions, options,
                  &page_width, &page_length, media_limits);
@@ -512,9 +512,9 @@ static int generate_banner_pdf(banner_t *banner,
 //     if (copies > 1)
 //         pdf_duplicate_page(doc, 1, copies);
 
-//     pdf_write(doc, stdout);
+    pdf_write(doc, stdout);
     free(buf);
-//     pdf_free(doc);
+    pdf_free(doc);
     return 0;
 }
 

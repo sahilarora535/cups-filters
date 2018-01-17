@@ -18,6 +18,10 @@
 #include <config.h>
 #include "pdf.h"
 
+#include <qpdf/QPDF.hh>
+#include <qpdf/QPDFObjectHandle.hh>
+#include <qpdf/QPDFWriter.hh>
+
 // #include <PDFDoc.h>
 // #include <GlobalParams.h>
 // #include <Form.h>
@@ -84,37 +88,37 @@
 // /* Font to use to fill form */
 // static EMB_PARAMS *Font;
 
-// extern "C" pdf_t * pdf_load_template(const char *filename)
-// {
-//     /* Init poppler */
-//     globalParams = new GlobalParams();
 
-//     PDFDoc *doc = new PDFDoc(new GooString(filename));
+/**
+ * 'pdf_load_template()' - Load an existing PDF file and do initial parsing
+ *                         using QPDF.
+ * I - Filename to open
+ */
+extern "C" pdf_t * pdf_load_template(const char *filename)
+{
+  QPDF *pdf = new QPDF();
+  pdf->processFile(filename);
+  unsigned pages = (pdf->getAllPages()).size();
 
-//     if (!doc->isOk()) {
-//         fprintf(stderr,
-//                 "Error: unable to open template document '%s'\n",
-//                 filename);
-//         delete doc;
-//         return NULL;
-//     }
+  if (pages != 1) {
+    fprintf(stderr, "Error: PDF template must contain exactly 1 page: %s\n",
+            filename);
+    delete pdf;
+    return NULL;
+  }
 
-//     if (doc->getNumPages() != 1) {
-//         fprintf(stderr,
-//                 "Error: PDF template must contain exactly 1 page: %s\n",
-//                 filename);
-//         delete doc;
-//         return NULL;
-//     }
-
-//     return doc;
-// }
+  return pdf;
+}
 
 
-// extern "C" void pdf_free(pdf_t *pdf)
-// {
-//     delete pdf;
-// }
+/**
+ * 'pdf_free()' - Free pointer used by PDF object
+ * I - Pointer to PDF object
+ */
+extern "C" void pdf_free(pdf_t *pdf)
+{
+  delete pdf;
+}
 
 
 // extern "C" void pdf_prepend_stream(pdf_t *doc,
@@ -589,53 +593,16 @@
 // }
 
 
-// class NonSeekableFileOutStream: public OutStream
-// {
-// public:
-//     NonSeekableFileOutStream(FILE *f):
-//         file(f), pos(0)
-//     {
-//     }
-
-//     void close()
-//     {
-//     }
-
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 23
-//     Goffset getPos()
-// #else
-//     int getPos()
-// #endif
-//     {
-//         return this->pos;
-//     }
-
-//     void put(char c)
-//     {
-//         fputc(c, this->file);
-//         this->pos++;
-//     }
-
-//     void printf(const char *fmt, ...)
-//     {
-//         va_list args;
-//         va_start(args, fmt);
-//         this->pos += vfprintf(this->file, fmt, args);
-//         va_end(args);
-//     }
-
-// private:
-//     FILE *file;
-//     int pos;
-// };
-
-
-// extern "C" void pdf_write(pdf_t *doc,
-//                           FILE *file)
-// {
-//     NonSeekableFileOutStream outs(file);
-//     doc->saveAs(&outs, writeForceRewrite);
-// }
+/**
+ * 'pdf_write()' - Write the contents of PDF object to an already open FILE*.
+ * I - pointer to QPDF structure
+ * I - File pointer to write to
+ */
+extern "C" void pdf_write(pdf_t *pdf, FILE *file)
+{
+  QPDFWriter output(*pdf, "pdf_write", file, false);
+  output.write();
+}
 
 // /*
 //  * Get value according to key.
@@ -706,7 +673,7 @@
 //     /* Page's resources dictionary */
 //     Object resdict;
 //     Ref resref;
-    
+  
 //     get_resource_dict(xref, pageobj.getDict(), &resdict, &resref);
 
 //     FormPageWidgets *widgets = page->getFormWidgets();
