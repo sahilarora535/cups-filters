@@ -18,6 +18,8 @@
 #include <config.h>
 #include "pdf.h"
 
+#include <vector>
+#include <string>
 #include <qpdf/QPDF.hh>
 #include <qpdf/QPDFObjectHandle.hh>
 #include <qpdf/QPDFWriter.hh>
@@ -87,6 +89,21 @@
 
 // /* Font to use to fill form */
 // static EMB_PARAMS *Font;
+
+
+/**
+ * 'makeRealBox()' - Return a QPDF array object of real values for a box.
+ * O - QPDFObjectHandle for an array
+ * I - Dimensions of the box in a float array
+ */
+static QPDFObjectHandle makeRealBox(float values[4])
+{
+  QPDFObjectHandle ret = QPDFObjectHandle::newArray();
+  for (int i = 0; i < 4; ++i) {
+    ret.appendItem(QPDFObjectHandle::newReal(values[i]));
+  }
+  return ret;
+}
 
 
 /**
@@ -393,48 +410,40 @@ extern "C" void pdf_free(pdf_t *pdf)
 // }
 
 
-// static bool dict_lookup_rect(Object *dict,
-//                              const char *key,
-//                              float rect[4])
-// {
-//     Object o;
-//     Array *array;
-//     int i;
+/**
+ * 'dict_lookup_rect()' - Lookup for an array of rectangle dimensions in a QPDF
+ *                        dictionary object. If it is found, store the values in
+ *                        an array and return true, else return false.
+ * O - True / False, depending on whether the key is found in the dictionary
+ * I - PDF dictionary object
+ * I - Key to lookup for
+ * I - array to store values if key is found
+ */
+static bool dict_lookup_rect(QPDFObjectHandle object,
+                             std::string const& key,
+                             float rect[4])
+{
+  // preliminary checks
+  if (!object.isDictionary() || !object.hasKey(key))
+    return false;
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     o = dict->dictLookup(key);
-//     if (o.isNull())
-// #else
-//     if (!dict->dictLookup(key, &o))
-// #endif
-//         return false;
+  // check if the key is array or some other type
+  QPDFObjectHandle value = object.getKey(key);
+  if (!value.isArray())
+    return false;
+  
+  // get values in a vector and assign it to rect
+  std::vector<QPDFObjectHandle> array = value.getArrayAsVector();
+  for (int i = 0; i < 4; ++i) {
+    // if the value in the array is not real, we have an invalid array 
+    if (!array[i].isReal() && !array[i].isInteger())
+      return false;
+    
+    rect[i] = array[i].getNumericValue();
+  }
 
-//     if (!o.isArray()) {
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//         o.free();
-// #endif
-//         return false;
-//     }
-
-//     array = o.getArray();
-//     for (i = 0; i < 4; i++) {
-//         Object el;
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         el = array->get(i);
-//         if (el.isNum())
-//             rect[i] = el.getNum();
-// #else
-//         if (array->get(i, &el) && el.isNum())
-//             rect[i] = el.getNum();
-//         el.free();
-// #endif
-//     }
-
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//     o.free();
-// #endif
-//     return i == 4;
-// }
+  return array.size() == 4;
+}
 
 
 // static void dict_set_rect(XRef *xref,
@@ -467,61 +476,67 @@ extern "C" void pdf_free(pdf_t *pdf)
 // }
 
 
-// static void fit_rect(float oldrect[4],
-//                      float newrect[4],
-//                      float *scale)
-// {
-//     float oldwidth = oldrect[2] - oldrect[0];
-//     float oldheight = oldrect[3] - oldrect[1];
-//     float newwidth = newrect[2] - newrect[0];
-//     float newheight = newrect[3] - newrect[1];
+/**
+ * 'fit_rect()' - Update the scale of the page using old media box dimensions
+ *                and new media box dimensions.
+ * I - Old media box
+ * I - New media box
+ * I - Pointer to scale which needs to be updated
+ */
+static void fit_rect(float oldrect[4],
+                     float newrect[4],
+                     float *scale)
+{
+  float oldwidth = oldrect[2] - oldrect[0];
+  float oldheight = oldrect[3] - oldrect[1];
+  float newwidth = newrect[2] - newrect[0];
+  float newheight = newrect[3] - newrect[1];
 
-//     *scale = newwidth / oldwidth;
-//     if (oldheight * *scale > newheight)
-//         *scale = newheight / oldheight;
-// }
+  *scale = newwidth / oldwidth;
+  if (oldheight * *scale > newheight)
+    *scale = newheight / oldheight;
+}
 
 
-// extern "C" void pdf_resize_page (pdf_t *doc,
-//                                  int page,
-//                                  float width,
-//                                  float length,
-//                                  float *scale)
-// {
-//     XRef *xref = doc->getXRef();
-//     Ref *pageref = doc->getCatalog()->getPageRef(page);
-//     Object pageobj;
-//     float mediabox[4] = { 0.0, 0.0, width, length };
-//     float old_mediabox[4];
+/**
+ * 'pdf_resize_page()' - Resize page in a PDF with the given dimensions.
+ * I - Pointer to QPDF object
+ * I - Page number
+ * I - Width of page to set
+ * I - Length of page to set
+ * I - Scale of page to set
+ */
+extern "C" void pdf_resize_page (pdf_t *pdf,
+                                 unsigned page_num,
+                                 float width,
+                                 float length,
+                                 float *scale)
+{
+  std::vector<QPDFObjectHandle> pages = pdf->getAllPages();
+  if (pages.empty() || page_num > pages.size()) {
+    fprintf(stderr, "ERROR: Unable to resize requested PDF page\n");
+    return;
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     pageobj = xref->fetch(pageref->num, pageref->gen);
-// #else
-//     xref->fetch(pageref->num, pageref->gen, &pageobj);
-// #endif
-//     if (!pageobj.isDict()) {
-//         fprintf(stderr, "Error: malformed pdf\n");
-//         return;
-//     }
+  QPDFObjectHandle page = pages[page_num - 1];
+  float new_mediabox[4] = { 0.0, 0.0, width, length };
+  float old_mediabox[4];
+  QPDFObjectHandle media_box;
 
-//     if (!dict_lookup_rect (&pageobj, "MediaBox", old_mediabox)) {
-//         fprintf(stderr, "Error: pdf doesn't contain a valid mediabox\n");
-//         return;
-//     }
+  if (!dict_lookup_rect(page, "/MediaBox", old_mediabox)) {
+    fprintf(stderr, "ERROR: pdf doesn't contain a valid mediabox\n");
+    return;
+  }
 
-//     fit_rect(old_mediabox, mediabox, scale);
+  fit_rect(old_mediabox, new_mediabox, scale);
+  media_box = makeRealBox(new_mediabox);
 
-//     dict_set_rect (xref, &pageobj, "MediaBox", mediabox);
-//     dict_set_rect (xref, &pageobj, "CropBox", mediabox);
-//     dict_set_rect (xref, &pageobj, "TrimBox", mediabox);
-//     dict_set_rect (xref, &pageobj, "ArtBox", mediabox);
-//     dict_set_rect (xref, &pageobj, "BleedBox", mediabox);
-
-//     xref->setModifiedObject(&pageobj, *pageref);
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//     pageobj.free();
-// #endif
-// }
+  page.replaceKey("/ArtBox", media_box);
+  page.replaceKey("/BleedBox", media_box);
+  page.replaceKey("/CropBox", media_box);
+  page.replaceKey("/MediaBox", media_box);
+  page.replaceKey("/TrimBox", media_box);
+}
 
 
 // extern "C" void pdf_duplicate_page (pdf_t *doc,

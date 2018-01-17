@@ -380,7 +380,7 @@ static int generate_banner_pdf(banner_t *banner,
     get_pagesize(ppd, noptions, options,
                  &page_width, &page_length, media_limits);
 
-//     pdf_resize_page (doc, 1, page_width, page_length, &page_scale);
+    pdf_resize_page (doc, 1, page_width, page_length, &page_scale);
 
 //     pdf_add_type1_font(doc, 1, "Courier");
 
