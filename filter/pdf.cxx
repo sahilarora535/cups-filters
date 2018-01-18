@@ -117,105 +117,53 @@
 // }
 
 
-// extern "C" void pdf_prepend_stream(pdf_t *doc,
-//                                    int page,
-//                                    char *buf,
-//                                    size_t len)
-// {
-//     XRef *xref = doc->getXRef();
-//     Ref *pageref = doc->getCatalog()->getPageRef(page);
-//     Object dict, lenobj, stream, streamrefobj;
-//     Object pageobj, contents;
-//     Object array;
-//     Ref r;
+/**
+ * 'pdf_prepend_stream' - Prepend a stream to the contents of a specified
+ *                        page in PDF file.
+ * I - Pointer to QPDF object
+ * I - page number of page to prepend stream to
+ * I - buffer containing data to be prepended
+ * I - length of buffer
+ */
+extern "C" void pdf_prepend_stream(pdf_t *pdf,
+                                   unsigned page_num,
+                                   char const *buf,
+                                   size_t len)
+{
+  std::vector<QPDFObjectHandle> pages = pdf->getAllPages();
+  if (pages.empty() || page_num > pages.size()) {
+    fprintf(stderr, "ERROR: Unable to prepend stream to requested PDF page\n");
+    return;
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     pageobj = xref->fetch(pageref->num, pageref->gen);
-// #else
-//     xref->fetch(pageref->num, pageref->gen, &pageobj);
-// #endif
-//     if (!pageobj.isDict() ||
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         (contents = pageobj.dictLookupNF("Contents")).isNull()
-// #else
-//         !pageobj.dictLookupNF("Contents", &contents)
-// #endif
-//     ) {
-//         fprintf(stderr, "Error: malformed pdf\n");
-//         return;
-//     }
+  QPDFObjectHandle page = pages[page_num - 1];
 
-//     if (contents.isRef()) {
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         contents = xref->fetch(contents.getRefNum(), contents.getRefGen());
-// #else
-//         xref->fetch(contents.getRefNum(), contents.getRefGen(), &contents);
-// #endif
-//     }
+  // get page contents stream / array  
+  QPDFObjectHandle contents = page.getKey("/Contents");
+  if (!contents.isStream() && !contents.isArray())
+  {
+    fprintf(stderr, "ERROR: Malformed PDF.\n");
+    return;
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     (void) lenobj;
-//     dict = Object(new Dict(xref));
-//     dict.dictSet("Length", Object(static_cast<int>(len)));
-//     stream = Object(static_cast<Stream *>(new MemStream(buf, 0, len, std::move(dict))));
-// #else
-//     lenobj.initInt(len);
-//     dict.initDict(xref);
-//     dict.dictSet("Length", &lenobj);
-//     stream.initStream(new MemStream(buf, 0, len, &dict));
-// #endif
+  // prepare the new stream which is to be prepended
+  PointerHolder<Buffer> stream_data = PointerHolder<Buffer>(new Buffer(len));
+  memcpy(stream_data->getBuffer(), buf, len);
+  QPDFObjectHandle stream = QPDFObjectHandle::newStream(pdf, stream_data);
+  stream = pdf->makeIndirectObject(stream);
 
-//     r = xref->addIndirectObject(&stream);
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     streamrefobj = Object(r.num, r.gen);
-// #else
-//     streamrefobj.initRef(r.num, r.gen);
-// #endif
+  // if the contents is an array, prepend the new stream to the array,
+  // else convert the contents to an array and the do the same.
+  if (contents.isStream())
+  {
+    QPDFObjectHandle old_streamdata = contents;
+    contents = QPDFObjectHandle::newArray();
+    contents.appendItem(old_streamdata);
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     array = Object(new Array(xref));
-//     array.arrayAdd(std::move(streamrefobj));
-// #else
-//     array.initArray(xref);
-//     array.arrayAdd(&streamrefobj);
-// #endif
-
-//     if (contents.isStream()) {
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         contents = pageobj.dictLookupNF("Contents"); // streams must be indirect, i.e. not fetch()-ed
-//         array.arrayAdd(std::move(contents));
-// #else
-//         pageobj.dictLookupNF("Contents", &contents); // streams must be indirect, i.e. not fetch()-ed
-//         array.arrayAdd(&contents);
-// #endif
-//     }
-//     else if (contents.isArray()) {
-//         int i, len = contents.arrayGetLength();
-//         Object obj;
-//         for (i = 0; i < len; i++) {
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//             obj = contents.arrayGetNF(i);
-//             array.arrayAdd(std::move(obj));
-// #else
-//             contents.arrayGetNF(i, &obj);
-//             array.arrayAdd(&obj);
-// #endif
-//         }
-//     }
-//     else
-//         fprintf(stderr, "Error: malformed pdf\n");
-
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     pageobj.dictSet("Contents", std::move(array));
-// #else
-//     pageobj.dictSet("Contents", &array);
-// #endif
-
-//     xref->setModifiedObject(&pageobj, *pageref);
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//     pageobj.free();
-// #endif
-// }
+  contents.insertItem(0, stream);
+  page.replaceKey("/Contents", contents);
+}
 
 
 // #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58

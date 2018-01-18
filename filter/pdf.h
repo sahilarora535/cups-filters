@@ -36,6 +36,7 @@ struct _opt {
     opt_t *next;
 };
 
+<<<<<<< HEAD
 // pdf_t * pdf_load_template(const char *filename);
 // void pdf_free(pdf_t *pdf);
 // void pdf_write(pdf_t *doc, FILE *file);
@@ -44,6 +45,12 @@ struct _opt {
 // void pdf_add_type1_font(pdf_t *doc, int page, const char *name);
 // void pdf_resize_page (pdf_t *doc, int page, float width, float length, float *scale);
 =======
+=======
+pdf_t * pdf_load_template(const char *filename);
+void pdf_free(pdf_t *pdf);
+void pdf_write(pdf_t *doc, FILE *file);
+void pdf_prepend_stream(pdf_t *doc, unsigned page, char const *buf, size_t len);
+>>>>>>> filter/pdf.cxx: Convert 'pdf_prepend_stream' functions to use QPDF
 void pdf_add_type1_font(pdf_t *doc, unsigned page, const char *name);
 void pdf_resize_page(pdf_t *doc, unsigned page, float width, float length, float *scale);
 <<<<<<< HEAD
