@@ -471,73 +471,29 @@ extern "C" void pdf_add_type1_font(pdf_t *pdf,
 // }
 
 
-// extern "C" void pdf_duplicate_page (pdf_t *doc,
-//                                     int pagenr,
-//                                     int count)
-// {
-//     XRef *xref = doc->getXRef();
-//     Ref *pageref = doc->getCatalog()->getPageRef(pagenr);
-//     Object page, parentref, parent, kids, ref, countobj;
-//     int i;
+/**
+ * 'pdf_duplicate_page()' - Duplicate a specified pdf page in a PDF
+ * I - Pointer to QPDF object
+ * I - page number of the page to be duplicated
+ * I - number of copies to be duplicated
+ */
+extern "C" void pdf_duplicate_page (pdf_t *pdf,
+                                    unsigned page_num,
+                                    unsigned count)
+{
+  std::vector<QPDFObjectHandle> pages = pdf->getAllPages();
+  if (pages.empty() || page_num > pages.size()) {
+    fprintf(stderr, "ERROR: Unable to duplicate requested PDF page\n");
+    return;
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     page = xref->fetch(pageref->num, pageref->gen);
-// #else
-//     xref->fetch(pageref->num, pageref->gen, &page);
-// #endif
-//     if (!page.isDict("Page")) {
-//         fprintf(stderr, "Error: malformed pdf (invalid Page object)\n");
-//         return;
-//     }
-
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     parentref = page.dictLookupNF("Parent");
-//     parent = parentref.fetch(xref);
-// #else
-//     page.dictLookupNF("Parent", &parentref);
-//     parentref.fetch(xref, &parent);
-// #endif
-//     if (!parent.isDict("Pages")) {
-//         fprintf(stderr, "Error: malformed pdf (Page.Parent must point to a "
-//                         "Pages object)\n");
-//         return;
-//     }
-
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     kids = parent.dictLookup("Kids");
-// #else
-//     parent.dictLookup("Kids", &kids);
-// #endif
-//     if (!kids.isArray()) {
-//         fprintf(stderr, "Error: malformed pdf (Pages.Kids must be an array)\n");
-//         return;
-//     }
-
-//     // Since we're dealing with single page pdfs, simply append the same page
-//     // object to the end of the array
-//     // Note: We must make a (shallow) copy of the page object to avoid loops in
-//     // the pages tree (not supported by major pdf implementations).
-//     for (i = 1; i < count; i++) {
-//         Ref r = xref->addIndirectObject(&page);
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         kids.arrayAdd(Object(r.num, r.gen));
-// #else
-//         ref.initRef(r.num, r.gen);
-//         kids.arrayAdd(&ref);
-//         ref.free();
-// #endif
-//     }
-
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     parent.dictSet("Count", Object(count));
-// #else
-//     countobj.initInt(count);
-//     parent.dictSet("Count", &countobj);
-//     countobj.free();
-// #endif
-
-//     xref->setModifiedObject(&parent, parentref.getRef());
-// }
+  QPDFObjectHandle page = pages[page_num - 1];
+  for (unsigned i = 0; i < count; ++i)
+  {
+    page = pdf->makeIndirectObject(page);
+    pdf->addPage(page, false);
+  }
+}
 
 
 // class NonSeekableFileOutStream: public OutStream

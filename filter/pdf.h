@@ -46,8 +46,12 @@ struct _opt {
 =======
 void pdf_add_type1_font(pdf_t *doc, unsigned page, const char *name);
 void pdf_resize_page(pdf_t *doc, unsigned page, float width, float length, float *scale);
+<<<<<<< HEAD
 >>>>>>> bannertopdf: Add type1 fontface to PDF using QPDF
 // void pdf_duplicate_page (pdf_t *doc, int page, int count);
+=======
+void pdf_duplicate_page (pdf_t *doc, unsigned page, unsigned count);
+>>>>>>> bannertopdf: Add 'pdf_duplicate_page' function using QPDF
 // int pdf_fill_form(pdf_t *doc, opt_t *opt);
 
 #ifdef __cplusplus
