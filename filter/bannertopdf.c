@@ -382,7 +382,7 @@ static int generate_banner_pdf(banner_t *banner,
 
     pdf_resize_page (doc, 1, page_width, page_length, &page_scale);
 
-//     pdf_add_type1_font(doc, 1, "Courier");
+    pdf_add_type1_font(doc, 1, "Courier");
 
 #ifdef HAVE_OPEN_MEMSTREAM
     s = open_memstream(&buf, &len);
