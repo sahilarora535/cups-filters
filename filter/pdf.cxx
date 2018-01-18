@@ -291,102 +291,53 @@
 // }
 
 
-// extern "C" void pdf_add_type1_font(pdf_t *doc,
-//                                    int page,
-//                                    const char *name)
-// {
-//     XRef *xref = doc->getXRef();
-//     Ref *pageref = doc->getCatalog()->getPageRef(page);
-//     Object pageobj, font, fonts;
+/**
+ * 'pdf_add_type1_font()' - Add the specified type1 fontface to the specified
+ *                          page in a PDF document.
+ * I - QPDF object
+ * I - page number of the page to which the font is to be added
+ * I - name of the font to be added
+ */
+extern "C" void pdf_add_type1_font(pdf_t *pdf,
+                                   unsigned page_num,
+                                   const char *name)
+{
+  std::vector<QPDFObjectHandle> pages = pdf->getAllPages();
+  if (pages.empty() || page_num > pages.size()) {
+    fprintf(stderr, "ERROR: Unable to add type1 font to requested PDF page\n");
+    return;
+  }
 
-//     Object resdict;
-//     Ref resref;
+  QPDFObjectHandle page = pages[page_num - 1];
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     pageobj = xref->fetch(pageref->num, pageref->gen);
-// #else
-//     xref->fetch(pageref->num, pageref->gen, &pageobj);
-// #endif
-//     if (!pageobj.isDict()) {
-//         fprintf(stderr, "Error: malformed pdf\n");
-//         return;
-//     }
+  QPDFObjectHandle resources = page.getKey("/Resources");
+  if (!resources.isDictionary())
+  {
+    fprintf(stderr, "ERROR: Malformed PDF.\n");
+    return;
+  }
 
-//     if (!get_resource_dict(xref, pageobj.getDict(), &resdict, &resref)) {
-//         fprintf(stderr, "Error: malformed pdf\n");
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//         pageobj.free();
-// #endif
-//         return;
-//     }
+  QPDFObjectHandle font = QPDFObjectHandle::newDictionary();
+  font.replaceKey("/Type", QPDFObjectHandle::newName("/Font"));
+  font.replaceKey("/Subtype", QPDFObjectHandle::newName("/Type1"));
+  font.replaceKey("/BaseFont",
+                  QPDFObjectHandle::newName(std::string("/") + std::string(name)));
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     font = Object(new Dict(xref));
-// #else
-//     font.initDict(xref);
-// #endif
-//     font.dictSet("Type", name_object("Font"));
-//     font.dictSet("Subtype", name_object("Type1"));
-//     font.dictSet("BaseFont", name_object(name));
-//     xref->addIndirectObject(&font);
+  QPDFObjectHandle fonts = resources.getKey("/Font");
+  if (fonts.isNull())
+  {
+    fonts = QPDFObjectHandle::newDictionary();
+  }
+  else if (!fonts.isDictionary())
+  {
+    fprintf(stderr, "ERROR: Can't recognize Font resource in PDF template.\n");
+    return;
+  }
 
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     fonts = resdict.dictLookupNF("Font");
-// #else
-//     resdict.dictLookupNF("Font", &fonts);
-// #endif
-//     if (fonts.isNull()) {
-//         /* Create new font dic obj in page's resources */
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         resdict.dictSet("Font", Object(new Dict(xref)));
-// #else
-//         fonts.initDict(xref);
-//         resdict.dictSet("Font", &fonts);
-// #endif
-//     }
-
-//     Object *fonts_dic;
-//     Object dereferenced_obj;
-
-//     if ( fonts.isDict() ) {
-//         /* "Font" resource is dictionary object */
-//         fonts_dic = &fonts;
-//     } else if ( fonts.isRef() ) {
-//         /* "Font" resource is indirect reference object */
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//         dereferenced_obj = xref->fetch(fonts.getRefNum(), fonts.getRefGen());
-// #else
-//         xref->fetch(fonts.getRefNum(), fonts.getRefGen(), &dereferenced_obj);
-// #endif
-//         fonts_dic = &dereferenced_obj;
-//     }
-
-//     if ( ! fonts_dic->isDict() ) {
-//         fprintf(stderr, "Can't recognize Font resource in PDF template.\n");
-//         return;
-//     }
-
-//     /* Add new entry to "Font" resource */
-// #if POPPLER_VERSION_MAJOR > 0 || POPPLER_VERSION_MINOR >= 58
-//     fonts_dic->dictSet("bannertopdf-font", std::move(font));
-// #else
-//     fonts_dic->dictSet("bannertopdf-font", &font);
-// #endif
-
-//     /* Notify poppler about changes */
-//     if ( fonts.isRef() ) {
-//         xref->setModifiedObject(fonts_dic, fonts.getRef());
-//     }
-
-//     if (resref.num == 0)
-//         xref->setModifiedObject(&pageobj, *pageref);
-//     else
-//         xref->setModifiedObject(&resdict, resref);
-
-// #if POPPLER_VERSION_MAJOR <= 0 && POPPLER_VERSION_MINOR < 58
-//     pageobj.free();
-// #endif
-// }
+  font = pdf->makeIndirectObject(font);
+  fonts.replaceKey("/bannertopdf-font", font);
+  resources.replaceKey("/Font", fonts);
+}
 
 
 // static bool dict_lookup_rect(Object *dict,
