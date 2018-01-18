@@ -369,7 +369,7 @@ static int generate_banner_pdf(banner_t *banner,
     float media_limits[4];
     float page_scale;
     ppd_attr_t *attr;
-    int copies;
+    unsigned copies;
 #ifndef HAVE_OPEN_MEMSTREAM
     struct stat st;
 #endif
@@ -509,8 +509,8 @@ static int generate_banner_pdf(banner_t *banner,
     if (duplex_marked(ppd, noptions, options))
         copies *= 2;
 
-//     if (copies > 1)
-//         pdf_duplicate_page(doc, 1, copies);
+    if (copies > 1)
+        pdf_duplicate_page(doc, 1, copies);
 
     pdf_write(doc, stdout);
     free(buf);
