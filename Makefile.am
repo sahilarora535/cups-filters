@@ -572,8 +572,7 @@ pdftopdf_LDADD = \
 # ======================
 genfilterscripts = \
 	filter/imagetops \
-	filter/texttops  \
-	filter/rastertopclm
+	filter/texttops
 pkgfilter_SCRIPTS = $(genfilterscripts)
 gsfilterscripts = \
 	filter/gstopxl \
@@ -605,6 +604,7 @@ pkgfilter_PROGRAMS += \
 	rastertopclx \
 	texttopdf \
 	rastertopdf \
+	rastertopclm \
 	rastertops
 if ENABLE_URFTOPDF
 pkgfilter_PROGRAMS += \
@@ -790,6 +790,19 @@ rastertopdf_CXXFLAGS = \
 	$(LIBQPDF_CFLAGS) \
 	-I$(srcdir)/cupsfilters/
 rastertopdf_LDADD = \
+	$(CUPS_LIBS) \
+	$(LCMS_LIBS) \
+	$(LIBQPDF_LIBS) \
+	libcupsfilters.la
+
+rastertopclm_SOURCES = \
+	filter/rastertopclm.cpp
+rastertopclm_CXXFLAGS = \
+	$(CUPS_CFLAGS) \
+	$(LCMS_CFLAGS) \
+	$(LIBQPDF_CFLAGS) \
+	-I$(srcdir)/cupsfilters/
+rastertopclm_LDADD = \
 	$(CUPS_LIBS) \
 	$(LCMS_LIBS) \
 	$(LIBQPDF_LIBS) \
