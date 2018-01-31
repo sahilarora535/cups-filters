@@ -86,7 +86,7 @@
 
 #define DEFAULT_PDF_UNIT 72   // 1/72 inch
 
-#define PROGRAM "rastertopdf"
+#define PROGRAM "rastertopclm"
 
 #define dprintf(format, ...) fprintf(stderr, "DEBUG2: (" PROGRAM ") " format, __VA_ARGS__)
 
@@ -1330,10 +1330,10 @@ int main(int argc, char **argv)
     /* Determine the output format via an environment variable set by a wrapper
         script */
 #ifdef QPDF_HAVE_PCLM
-    if ((outformat_env = getenv("OUTFORMAT")) == NULL || strcasestr(outformat_env, "pdf"))
-      outformat = OUTPUT_FORMAT_PDF;
-    else if (strcasestr(outformat_env, "pclm"))
+    if ((outformat_env = getenv("OUTFORMAT")) == NULL || strcasestr(outformat_env, "pclm"))
       outformat = OUTPUT_FORMAT_PCLM;
+    else if (strcasestr(outformat_env, "pdf"))
+      outformat = OUTPUT_FORMAT_PDF;
     else {
       fprintf(stderr, "ERROR: OUTFORMAT=\"%s\", cannot determine output format\n",
 	      outformat_env);
