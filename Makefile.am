@@ -801,6 +801,7 @@ rastertopclm_CXXFLAGS = \
 	$(CUPS_CFLAGS) \
 	$(LCMS_CFLAGS) \
 	$(LIBQPDF_CFLAGS) \
+	-static \
 	-I$(srcdir)/cupsfilters/
 rastertopclm_LDADD = \
 	$(CUPS_LIBS) \
