@@ -1,6 +1,7 @@
 /*
  * Copyright 2012 Canonical Ltd.
  * Copyright 2013 ALT Linux, Andrew V. Stepanov <stanv@altlinux.com>
+ * Copyright 2018 Sahil Arora <sahilarora.535@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3, as published
@@ -493,17 +494,17 @@ static int generate_banner_pdf(banner_t *banner,
             noptions,
             options);
 
-//     /*
-//      * Try to find a PDF form in PDF template and fill it.
-//      */
-//     int ret = pdf_fill_form(doc, known_opts);
+    /*
+     * Try to find a PDF form in PDF template and fill it.
+     */
+    int ret = pdf_fill_form(doc, known_opts);
 
-//     /*
-//      * Could we fill a PDF form? If no, just add PDF stream.
-//      */
-//     if ( ! ret ) {
-//         pdf_prepend_stream(doc, 1, buf, len);
-//     }
+    /*
+     * Could we fill a PDF form? If no, just add PDF stream.
+     */
+    if ( ! ret ) {
+        pdf_prepend_stream(doc, 1, buf, len);
+    }
 
     copies = get_int_option("number-up", noptions, options, 1);
     if (duplex_marked(ppd, noptions, options))
