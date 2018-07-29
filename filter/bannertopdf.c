@@ -493,17 +493,17 @@ static int generate_banner_pdf(banner_t *banner,
             noptions,
             options);
 
-//     /*
-//      * Try to find a PDF form in PDF template and fill it.
-//      */
-//     int ret = pdf_fill_form(doc, known_opts);
+    /*
+     * Try to find a PDF form in PDF template and fill it.
+     */
+    int ret = pdf_fill_form(doc, known_opts);
 
-//     /*
-//      * Could we fill a PDF form? If no, just add PDF stream.
-//      */
-//     if ( ! ret ) {
-//         pdf_prepend_stream(doc, 1, buf, len);
-//     }
+    /*
+     * Could we fill a PDF form? If no, just add PDF stream.
+     */
+    if ( ! ret ) {
+        pdf_prepend_stream(doc, 1, buf, len);
+    }
 
     copies = get_int_option("number-up", noptions, options, 1);
     if (duplex_marked(ppd, noptions, options))

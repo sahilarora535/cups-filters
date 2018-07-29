@@ -23,6 +23,8 @@
 #include <qpdf/QPDF.hh>
 #include <qpdf/QPDFObjectHandle.hh>
 #include <qpdf/QPDFWriter.hh>
+#include <qpdf/QPDFAcroFormDocumentHelper.hh>
+#include <qpdf/QPDFPageDocumentHelper.hh>
 
 // #include <PDFDoc.h>
 // #include <GlobalParams.h>
@@ -474,25 +476,99 @@ extern "C" void pdf_write(pdf_t *pdf, FILE *file)
   output.write();
 }
 
-// /*
-//  * Get value according to key.
-//  */
-// const char *lookup_opt(opt_t *opt, const char *key) {
-//     if ( ! opt || ! key ) {
-//         return NULL;
-//     }
 
-//     while (opt) {
-//         if (opt->key && opt->val) {
-//             if ( strcmp(opt->key, key) == 0 ) {
-//                 return opt->val;
-//             }
-//         }
-//         opt = opt->next;
-//     }
 
-//     return NULL;
-// }
+/*
+ * 'lookup_opt()' - Get value according to key in the options list.
+ * I - pointer to the opt_t type list
+ * I - key to be found in the list
+ * O - character string which corresponds to the value of the key or
+ *     NULL if key is not found in the list.
+ */
+const char *lookup_opt(opt_t *opt, const char *key) {
+    if ( ! opt || ! key ) {
+        return NULL;
+    }
+
+    while (opt) {
+        if (opt->key && opt->val) {
+            if ( strcmp(opt->key, key) == 0 ) {
+                return opt->val;
+            }
+        }
+        opt = opt->next;
+    }
+
+    return NULL;
+}
+
+
+/*
+ * 'pdf_fill_form()' -  1. Lookup in PDF template file for form.
+ *                      2. Lookup for form fields' names.
+ *                      3. Fill recognized fields with information.
+ * I - Pointer to the QPDF structure
+ * I - Pointer to the opt_t type list
+ * O - status of form fill - 0 for failure, 1 for success
+ */
+extern "C" int pdf_fill_form(pdf_t *doc, opt_t *opt)
+{
+    // initialize AcroFormDocumentHelper and PageDocumentHelper objects
+    // to work with forms in the PDF
+    QPDFAcroFormDocumentHelper afdh(*doc);
+    QPDFPageDocumentHelper pdh(*doc);
+
+    // check if the PDF has a form or not
+    if ( !afdh.hasAcroForm() ) {
+        fprintf(stderr, "PDF template file doesn't have form. It's okay.\n");
+        return 0;
+    }
+
+    // get the first page from the PDF to fill the form. Since this
+    // is a banner file,it must contain only a single page, and that
+    // check has already been performed in the `pdf_load_template()` function
+    std::vector<QPDFPageObjectHelper> pages = pdh.getAllPages();
+    if (pages.empty()) {
+        fprintf(stderr, "Can't get page from PDF tamplate file.\n");
+        return 0;
+    }
+    QPDFPageObjectHelper page = pages.front();
+
+    // get the annotations in the page
+    std::vector<QPDFAnnotationObjectHelper> annotations =
+                  afdh.getWidgetAnnotationsForPage(page);
+
+    for (std::vector<QPDFAnnotationObjectHelper>::iterator annot_iter =
+                     annotations.begin();
+                 annot_iter != annotations.end(); ++annot_iter) {
+        // For each annotation, find its associated field. If it's a
+        // text field, we try to set its value. This will automatically
+        // update the document to indicate that appearance streams need
+        // to be regenerated. At the time of this writing, qpdf doesn't
+        // have any helper code to assist with appearance stream generation,
+        // though there's nothing that prevents it from being possible.
+        QPDFFormFieldObjectHelper ffh =
+            afdh.getFieldForAnnotation(*annot_iter);
+        if (ffh.getFieldType() == "/Tx") {
+            // Lookup the options setting for value of this field and fill the
+            // value accordingly. This will automatically set
+            // /NeedAppearances to true.
+            const char *name = ffh.getFullyQualifiedName().c_str();
+            const char *fill_with = lookup_opt(opt, name);
+            if (! fill_with) {
+                fprintf(stderr, "Lack information for widget: %s.\n", name);
+                fill_with = "N/A";
+            }
+            fprintf(stderr, "Fill widget name %s with value %s.\n", name, fill_with);
+            ffh.setV(fill_with);
+        }
+    }
+
+    // status 1 notifies that the function successfully filled all the
+    // identifiable fields in the form
+    return 1;
+}
+
 
 // /*
 //  * 1. Lookup in PDF template file for form.
